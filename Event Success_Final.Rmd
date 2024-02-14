@@ -1,0 +1,205 @@
+---
+title: "Event Rank"
+author: "Bailey Sutton"
+date: "1/23/2024"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(readr)
+library(ggplot2)
+library(ggimage)
+library(scales)
+library(showtext)
+library(sysfonts)
+library(RColorBrewer)
+
+showtext::showtext_auto()
+showtext_opts(dpi = 300)
+```
+
+# Import
+```{r Import Final Datasets}
+
+team_rank_2023 <- read_csv("team_rank_2023.csv")
+
+team_vt_rank_2023 <- read_csv("team_vt_rank_2023.csv")
+team_ub_rank_2023 <- read_csv("team_ub_rank_2023.csv")
+team_bb_rank_2023 <- read_csv("team_bb_rank_2023.csv")
+team_fx_rank_2023 <- read_csv("team_fx_rank_2023.csv")
+```
+
+```{r Import CGN Fonts}
+
+font_add_google("Roboto", "Roboto")
+font_add_google("Mukta", "Mukta")
+
+showtext_auto()
+```
+
+# Clean Data
+```{r Clean Event Rankings}
+
+#replace ties with numbers
+team_vt_rank_2023$Rank <- gsub("\\(.*","", team_vt_rank_2023$Rank)
+team_ub_rank_2023$Rank <- gsub("\\(.*","", team_ub_rank_2023$Rank)
+team_bb_rank_2023$Rank <- gsub("\\(.*","", team_bb_rank_2023$Rank)
+team_fx_rank_2023$Rank <- gsub("\\(.*","", team_fx_rank_2023$Rank)
+
+#convert rank to numeric
+team_vt_rank_2023$Rank <- as.numeric(team_vt_rank_2023$Rank)
+team_ub_rank_2023$Rank <- as.numeric(team_ub_rank_2023$Rank)
+team_bb_rank_2023$Rank <- as.numeric(team_bb_rank_2023$Rank)
+team_fx_rank_2023$Rank <- as.numeric(team_fx_rank_2023$Rank)
+```
+
+```{r Clean W&M}
+
+team_rank_2023$Team[team_rank_2023$Team == "William &amp; Mary"] <- "William & Mary"
+team_vt_rank_2023$Team[team_vt_rank_2023$Team == "William &amp; Mary"] <- "William & Mary"
+team_ub_rank_2023$Team[team_ub_rank_2023$Team == "William &amp; Mary"] <- "William & Mary"
+team_bb_rank_2023$Team[team_bb_rank_2023$Team == "William &amp; Mary"] <- "William & Mary"
+team_fx_rank_2023$Team[team_fx_rank_2023$Team == "William &amp; Mary"] <- "William & Mary"
+```
+
+# Format Graph Data
+```{r Subset Final Data}
+
+#subset team data
+team_rank_sub <- subset(team_rank_2023, select = c("Team", "Rank"))
+
+#rename columns
+team_rank_sub <- rename(team_rank_sub, team_rank = Rank)
+
+#subset event data
+vt_rank_sub <- subset(team_vt_rank_2023, select = c("Team", "Event", "Rank"))
+ub_rank_sub <- subset(team_ub_rank_2023, select = c("Team", "Event", "Rank"))
+bb_rank_sub <- subset(team_bb_rank_2023, select = c("Team", "Event", "Rank"))
+fx_rank_sub <- subset(team_fx_rank_2023, select = c("Team", "Event", "Rank"))
+
+#subset team info
+team_info <- subset(team_rank_2023, select = c("Team", "Division", "Conference"))
+```
+
+```{r Format Final Graph Data}
+
+#rbind event rankings
+event_rank <- rbind(vt_rank_sub, ub_rank_sub, bb_rank_sub, fx_rank_sub)
+
+#merge team ranking
+team_event_rank <- merge(event_rank, team_rank_sub, by = "Team")
+
+#merge team info
+graph_data <- merge(team_event_rank, team_info, by = "Team")
+
+#relevel event variable
+graph_data$Event <- factor(graph_data$Event, levels = c("VT", "UB", "BB", "FX"))
+
+#subset to D1
+graph_data_d1 <- subset(graph_data, Division == "Div I")
+```
+
+```{r Analyze Event Data}
+
+graph_data_event <- pivot_wider(graph_data, names_from = Event, values_from = Rank)
+
+#ID high/low performers
+graph_data_event$vt_over_under <- ifelse(abs(graph_data_event$VT - graph_data_event$team_rank) > 5, TRUE, FALSE)
+graph_data_event$ub_over_under <- ifelse(abs(graph_data_event$UB - graph_data_event$team_rank) > 5, TRUE, FALSE)
+graph_data_event$bb_over_under <- ifelse(abs(graph_data_event$BB - graph_data_event$team_rank) > 5, TRUE, FALSE)
+graph_data_event$fx_over_under <- ifelse(abs(graph_data_event$FX - graph_data_event$team_rank) > 5, TRUE, FALSE)
+
+graph_data_event$over_under_count <- rowSums(graph_data_event[9:12])
+
+#subset
+event_perf <- subset(graph_data_event, select = c(1:2, 4:8, 13))
+
+#sum by conf
+event_perf$over_under <- ifelse(event_perf$over_under_count > 0, 1, 0)
+
+event_perf_conf <- event_perf %>%
+  group_by(Conference) %>%
+  summarize(over_under_count = sum(over_under))
+
+team_count <- event_perf %>%
+  count(Conference)
+
+event_perf_conf <- merge(event_perf_conf, team_count, by = "Conference")
+
+event_perf_conf$per_perf <- (event_perf_conf$over_under_count / event_perf_conf$n) * 100
+```
+
+# Graphs
+```{r All Teams by Event}
+
+all_graph <- ggplot(graph_data, aes(x = team_rank, y = Rank)) +
+  facet_wrap(~ Event) +
+  geom_point() +
+  geom_line(stat = "smooth", method = "lm", se = FALSE, color = "#FC0140", alpha = .75, linewidth = 1) +
+  ggtitle("Final Team Ranking Compared to \nFinal Event Ranking (2023)") +
+  xlab("Final Team Ranking") +
+  ylab("Final Event Ranking") +
+  labs(caption = "Data Source: Road to Nationals") +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", size = 18, hjust = 0.5, family = "Mukta"),
+        axis.title = element_text(face = "bold", size = 14, family = "Mukta"),
+        axis.text = element_text(face = "bold", family = "Mukta"),
+        strip.text.x = element_text(size = 12, color = "#FFFFFF", face = "bold", family = "Mukta"),
+        strip.background = element_rect(color = "#FC0140", fill = "#FC0140", size = 1.5, linetype = "solid"),
+        plot.caption = element_text(family = "Roboto"))
+```
+
+```{r All Teams by Event by Conference}
+
+conf_graph <- ggplot(graph_data_d1, aes(x = team_rank, y = Rank, color = Conference)) +
+  facet_wrap(~ Event) +
+  geom_point() +
+  geom_line(stat = "smooth", method = "lm", se = FALSE, color = "#FC0140", alpha = .75, linewidth = 1) +
+  ggtitle("Final Team Ranking Compared to Final Event Ranking \nby Division I Conference (2023)") +
+  xlab("Final Team Ranking") +
+  ylab("Final Event Ranking") +
+  labs(caption = "Data Source: Road to Nationals") +
+  scale_color_brewer(palette = "Paired") +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", size = 18, hjust = 0.5, family = "Mukta"),
+        axis.title = element_text(face = "bold", size = 14, family = "Mukta"),
+        axis.text = element_text(face = "bold", family = "Mukta"),
+        strip.text.x = element_text(size = 12, color = "#FFFFFF", face = "bold", family = "Mukta"),
+        strip.background = element_rect(color = "#FC0140", fill = "#FC0140", size = 1.5, linetype = "solid"),
+        plot.caption = element_text(family = "Roboto"))
+```
+
+# Linear Models
+```{r Linear Models}
+
+#subset graph data by event
+vt_lm_data <- subset(graph_data, Event == "VT")
+ub_lm_data <- subset(graph_data, Event == "UB")
+bb_lm_data <- subset(graph_data, Event == "BB")
+fx_lm_data <- subset(graph_data, Event == "FX")
+
+#event models
+lm_vt <- lm(team_rank ~ Rank, vt_lm_data)
+lm_ub <- lm(team_rank ~ Rank, ub_lm_data)
+lm_bb <- lm(team_rank ~ Rank, bb_lm_data)
+lm_fx <- lm(team_rank ~ Rank, fx_lm_data)
+
+summary(lm_vt)
+summary(lm_ub)
+summary(lm_bb)
+summary(lm_fx)
+```
+
+# Export
+```{r Export Team Graph}
+
+ggsave("all_graph.jpeg", plot = all_graph)
+```
+
+```{r Export Conference Graph}
+
+ggsave("conf_graph.jpeg", plot = conf_graph)
+```
