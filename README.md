@@ -12,7 +12,7 @@ The full article can be found [here](https://collegegymnews.com/2024/02/12/data-
 ### Data
 The data for this project comes from [Road to Nationals (RTN)](https://roadtonationals.com/results/index.php), the official statistical site of NCAA Gymnastics.
 
-2023 Team and event rankings were scraped using the scraping_rtn Python package developed by CGN Senior Data Editor Claire Harmon.
+2023 Team and event rankings were scraped using the `scraping_rtn` Python package developed by CGN Senior Data Editor Claire Harmon.
 
 ### Programs
 Data scraping was done with Python using Google Colab. Analysis was done in R and graphics were created using `ggplot2`.
