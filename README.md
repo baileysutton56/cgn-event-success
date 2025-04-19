@@ -5,7 +5,7 @@ The full article can be found [here](https://collegegymnews.com/2024/02/12/data-
 
 ## Navigation
 - **:computer: code:** Files for scraping data from [Road to Nationals (RTN)](https://roadtonationals.com/results/index.php) and statistical analysis
-- **:file_folder: data:** Team ranking data files
+- **:file_folder: data:** Team and event ranking data files
 - **:bar_chart: plots:** Faceted line charts
 
 ## Methods
