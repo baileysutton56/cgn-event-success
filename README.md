@@ -15,7 +15,7 @@ The data for this project comes from [Road to Nationals (RTN)](https://roadtonat
 2023 Team and event rankings were scraped using the scraping_rtn Python package developed by CGN Senior Data Editor Claire Harmon.
 
 ### Programs
-Data scraping was done with Python using Google Colab. Analysis was done in R and graphics were created using [ggplot2](https://cran.r-project.org/web/packages/ggplot2/index.html).
+Data scraping was done with Python using Google Colab. Analysis was done in R and graphics were created using `ggplot2`.
 
 ## Results
 The purpose of this project is to compare a team's final ranking to their final event ranking from the 2023 season to determine if one of the four events has a greater impact on a team's overall ranking than the others.
